@@ -13,6 +13,7 @@
 from pyomo.common.config import ConfigValue
 from pyomo.core.base.constraint import Constraint
 from pyomo.core.base.var import Var
+from pyomo.core.base.param import Param
 from pyomo.core.base.units_container import units as pyunits
 
 from idaes.core import (
@@ -105,7 +106,14 @@ class IsothermalCompressorData(UnitModelBlockData):
             doc="Increase in pressure provided by this compressor",
         )
         self.add_pressure_change_equation(self.inlet_state, self.outlet_state)
-
+        
+        #Efficiency of the compressor
+        self.efficiency = Param(initialize = 1, 
+                                mutable = True, 
+                                units = pyunits.dimensionless, 
+                                doc = "Compressor Efficiency")
+                                
+                              
         # Add compression coefficient
         self.beta = Var(
             time,
@@ -125,6 +133,7 @@ class IsothermalCompressorData(UnitModelBlockData):
             doc="Work required to achieve the desired compression",
         )
         self.add_power_equation(self.inlet_state)
+        
 
     def add_state_isothermal_equation(self, state1, state2):
         time = self.flowsheet().time
@@ -170,6 +179,7 @@ class IsothermalCompressorData(UnitModelBlockData):
             cp_mass = inlet_state[t].cp_mol / inlet_state[t].mw
             power_expr = (
                 inlet_state[t].temperature
+                *1/self.efficiency
                 * cp_mass
                 * inlet_state[t].flow_mass
                 * (
