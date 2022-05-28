@@ -28,7 +28,7 @@ the Miniconda install section.
 +------------------+-----------------------------+
 | Windows          | :ref:`min_install_windows`  |
 +------------------+-----------------------------+
-| Mac OSX          | :ref:`min_install_osx`      |
+| macOS            | :ref:`min_install_macos`    |
 +------------------+-----------------------------+
 | Generic          | :ref:`min_install_generic`  |
 +------------------+-----------------------------+
@@ -71,30 +71,31 @@ Linux
    the commands to install the required libraries may differ. If these libraries
    are already installed, you can skip this and proceed with the next step.
 
-   .. note:: Depending on your distribution, you may need to prepend ``sudo`` to
-            these commands or switch to the "root" user.
+   Debian 9::
 
-   Ubuntu 18.04 and 19.10 and distributions based on them::
+       sudo apt-get install libgfortran3 libgomp1 liblapack3 libblas3
+
+   Ubuntu 18.04, Ubuntu 20.04, and Debian 10::
 
       sudo apt-get install libgfortran4 libgomp1 liblapack3 libblas3
 
-   Ubuntu 20.04 and distributions based on it ::
+   Ubuntu 22.04 and Debian 11::
 
       sudo apt-get install libgfortran5 libgomp1 liblapack3 libblas3
 
    Current RedHat based distributions, including CentOS::
 
-      yum install lapack blas libgfortran libgomp
+      sudo yum install lapack blas libgfortran libgomp
 
 **Complete Generic Install**
 
 Follow the :ref:`min_install_generic` instructions.
 
 
-.. _min_install_osx:
+.. _min_install_macos:
 
-Mac/OSX
--------
+macOS
+-----
 
 **Install  Miniconda (optional)**
 
@@ -112,7 +113,7 @@ Follow the :ref:`min_install_generic` instructions.
 Generic Install
 ---------------
 
-The remaining steps performed in either the Linux or OSX Terminal or Powershell.
+The remaining steps performed in either the Linux or macOS Terminal or Powershell.
 If you installed Miniconda on Windows use the Anaconda Prompt or Anaconda
 Powershell Prompt.  Regardless of OS and shell, the following steps are the same.
 
@@ -168,7 +169,7 @@ Powershell Prompt.  Regardless of OS and shell, the following steps are the same
 
 ..
 
-   .. warning:: The IDAES binary extensions are not yet supported on Mac/OSX.
+   .. warning:: The IDAES binary extensions are not yet supported on macOS with Intel processors.
 
                 As a fallback (assuming you are using a conda env) you can install
                 the generic ipopt solver with the command ``conda install -c

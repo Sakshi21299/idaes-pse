@@ -31,7 +31,6 @@ import pytest
 
 # package
 from idaes.commands import examples, extensions, convergence, config, env_info, base
-from idaes.util.system import TemporaryDirectory
 from . import create_module_scratch, rmtree_scratch
 import idaes
 
@@ -214,28 +213,27 @@ def test_examples_download_bad_version():
 
 
 @pytest.mark.integration()
-def test_examples_find_python_directories():
-    with TemporaryDirectory() as tmpd:
-        root = Path(tmpd)
-        # populate a/c/file.py, a/d/file.py, b/c/file.py, b/d/file.py
-        for i in ("a", "b"):
-            # create parent
-            os.mkdir(str(root / i))
-            for j in ("c", "d"):
-                pydir = root / i / j
-                # create child dir
-                os.mkdir(str(pydir))
-                # put python file in child
-                (pydir / "file.py").open("w")
-        # find
-        found_dirs = examples.find_python_directories(root)
-        # check
-        rel_found_dirs = [d.relative_to(root) for d in found_dirs]
-        for i in ("a", "b"):
-            path_i = Path(i)
-            assert path_i in rel_found_dirs
-            for j in ("c", "d"):
-                assert path_i / j in rel_found_dirs
+def test_examples_find_python_directories(tmp_path):
+    root = tmp_path
+    # populate a/c/file.py, a/d/file.py, b/c/file.py, b/d/file.py
+    for i in ("a", "b"):
+        # create parent
+        os.mkdir(str(root / i))
+        for j in ("c", "d"):
+            pydir = root / i / j
+            # create child dir
+            os.mkdir(str(pydir))
+            # put python file in child
+            (pydir / "file.py").open("w")
+    # find
+    found_dirs = examples.find_python_directories(root)
+    # check
+    rel_found_dirs = [d.relative_to(root) for d in found_dirs]
+    for i in ("a", "b"):
+        path_i = Path(i)
+        assert path_i in rel_found_dirs
+        for j in ("c", "d"):
+            assert path_i / j in rel_found_dirs
 
 
 @pytest.mark.integration()
@@ -403,17 +401,16 @@ def test_examples_local(tempdir):
 
 
 @pytest.mark.integration()
-def test_illegal_dirs():
-    with TemporaryDirectory() as tmpd:
-        root = Path(tmpd)
-        # git
-        (root / ".git").mkdir()
-        try:
-            examples.download(root, "1.2.3")
-        except examples.DownloadError as err:
-            assert "exists" in str(err)
-        finally:
-            (root / ".git").rmdir()
+def test_illegal_dirs(tmp_path):
+    root = tmp_path
+    # git
+    (root / ".git").mkdir()
+    try:
+        examples.download(root, "1.2.3")
+    except examples.DownloadError as err:
+        assert "exists" in str(err)
+    finally:
+        (root / ".git").rmdir()
 
 
 @pytest.mark.integration()
@@ -552,7 +549,6 @@ def test_strip_test_cells(remove_cells_notebooks):
 # get-extensions #
 ##################
 
-
 @pytest.mark.unit
 def test_get_extensions(runner):
     result = runner.invoke(extensions.get_extensions, ["--no-download"])
@@ -561,13 +557,25 @@ def test_get_extensions(runner):
 
 @pytest.mark.unit
 def test_print_extensions_version(runner):
-    result = runner.invoke(extensions.get_extensions, ["--show-current-version"])
+    result = runner.invoke(extensions.extensions_version)
     assert result.exit_code == 0
 
 
 @pytest.mark.unit
-def test_print_extensions_version(runner):
-    result = runner.invoke(extensions.get_extensions, ["--show-platforms"])
+def test_get_extensions_plat(runner):
+    result = runner.invoke(extensions.bin_platform)
+    assert result.exit_code == 0
+
+@pytest.mark.unit
+def test_get_extensions_bad_plat(runner):
+    result = runner.invoke(
+        extensions.bin_platform, ["--distro", "johns_good_linux42"])
+    assert result.exit_code == 0
+    assert result.output == "No supported binaries found.\n"
+
+@pytest.mark.unit
+def test_extensions_license(runner):
+    result = runner.invoke(extensions.extensions_license)
     assert result.exit_code == 0
 
 #################
