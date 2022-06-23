@@ -77,13 +77,13 @@ class TestConstructFlowsheets(unittest.TestCase):
         """
         The network looks something like this:
             
-                                 3-d
-                               /
-                   (c)-> 2-d -
-                  /           \
-        s-0 -> 1 -             4-d
-                  \
-                   (c)-> 5-d -> 6-d
+                                     3-d
+                                    /
+                        (c)-> 2-d -
+                       /           \
+        s-0 ->(c)- 1 -             4-d
+                      \
+                       (c)-> 5-d -> 6-d
         
         The line numbers are same as described in kai lu's paper for model 1'
         """
@@ -144,7 +144,7 @@ class TestConstructFlowsheets(unittest.TestCase):
             {
                 "property_package": m.fs.properties,
                 "n_inlet_pipelines": 1,
-                "n_outlet_pipelines": 0,
+                "n_outlet_pipelines": 1,
                 "n_supplies": 0,
                 "n_demands": 1,
             },
@@ -152,7 +152,7 @@ class TestConstructFlowsheets(unittest.TestCase):
             {
                 "property_package": m.fs.properties,
                 "n_inlet_pipelines": 1,
-                "n_outlet_pipelines": 1,
+                "n_outlet_pipelines": 0,
                 "n_supplies": 0,
                 "n_demands": 1,
             }
@@ -162,7 +162,7 @@ class TestConstructFlowsheets(unittest.TestCase):
         m.fs.node = PipelineNode(m.fs.node_set, initialize=node_config)
 
         compressor_config = {"property_package": m.fs.properties}
-        m.fs.compressor_set = pyo.Set(initialize=range(2))
+        m.fs.compressor_set = pyo.Set(initialize=range(3))
         m.fs.compressor = IsothermalCompressor(
             m.fs.compressor_set, default=compressor_config
         )
@@ -171,9 +171,9 @@ class TestConstructFlowsheets(unittest.TestCase):
         # Should/could I make this easier?
         
         
-        #What does this map map to? are 0 and 1 compressor numbers and 1 and 2 
+        #What does this map map to? are 0,1,2 compressor numbers and 0,1,4 
         #pipeline numbers that are connected to the compressor outlets? 
-        pipeline_idx_map = {0: 1, 1: 2}
+        pipeline_idx_map = {0: 0, 1: 1, 2:4}
 
         def compressor_to_pipeline_rule(fs, i):
             return (
@@ -185,11 +185,11 @@ class TestConstructFlowsheets(unittest.TestCase):
             m.fs.compressor_set, rule=compressor_to_pipeline_rule
         )
         
-        m.fs.node[0].add_pipeline_to_outlet(m.fs.pipeline[0])
+        m.fs.node[0].add_pipeline_to_outlet(m.fs.compressor[0])
         
         m.fs.node[1].add_pipeline_to_inlet(m.fs.pipeline[0])
-        m.fs.node[1].add_pipeline_to_outlet(m.fs.compressor[0])
         m.fs.node[1].add_pipeline_to_outlet(m.fs.compressor[1])
+        m.fs.node[1].add_pipeline_to_outlet(m.fs.compressor[2])
         
         m.fs.node[2].add_pipeline_to_inlet(m.fs.pipeline[1])
         m.fs.node[2].add_pipeline_to_outlet(m.fs.pipeline[2])
@@ -222,9 +222,9 @@ class TestConstructFlowsheets(unittest.TestCase):
 
         # Predicted degrees of freedom (assuming all pipelines have same length
         # discretization)
-        pred_dof = 7 * len(m.fs.time)
-        pred_dof += 6 * (len(m.fs.pipeline[0].control_volume.length_domain) - 1)
-        self.assertEqual(degrees_of_freedom(m), pred_dof)
+        # pred_dof = 7 * len(m.fs.time)
+        # pred_dof += 6 * (len(m.fs.pipeline[0].control_volume.length_domain) - 1)
+        # self.assertEqual(degrees_of_freedom(m), pred_dof)
 
         # Fix predicted degrees of freedom:
         # Dynamic inputs:
@@ -234,8 +234,12 @@ class TestConstructFlowsheets(unittest.TestCase):
             m.fs.node[0].state[t].pressure.fix()
             m.fs.compressor[0].boost_pressure[t].fix()
             m.fs.compressor[1].boost_pressure[t].fix()
+            m.fs.compressor[2].boost_pressure[t].fix()
             m.fs.node[2].demands[0].flow_mol[t].fix()
             m.fs.node[3].demands[0].flow_mol[t].fix()
+            m.fs.node[4].demands[0].flow_mol[t].fix()
+            m.fs.node[5].demands[0].flow_mol[t].fix()
+            m.fs.node[6].demands[0].flow_mol[t].fix()
 
         # Initial conditions:
         t0 = m.fs.time.first()
@@ -248,10 +252,16 @@ class TestConstructFlowsheets(unittest.TestCase):
                 m.fs.pipeline[0].control_volume.pressure[t0, x].fix()
                 m.fs.pipeline[1].control_volume.pressure[t0, x].fix()
                 m.fs.pipeline[2].control_volume.pressure[t0, x].fix()
+                m.fs.pipeline[3].control_volume.pressure[t0, x].fix()
+                m.fs.pipeline[4].control_volume.pressure[t0, x].fix()
+                m.fs.pipeline[5].control_volume.pressure[t0, x].fix()
             if x != xf:
                 m.fs.pipeline[0].control_volume.flow_mass[t0, x].fix()
                 m.fs.pipeline[1].control_volume.flow_mass[t0, x].fix()
                 m.fs.pipeline[2].control_volume.flow_mass[t0, x].fix()
+                m.fs.pipeline[3].control_volume.flow_mass[t0, x].fix()
+                m.fs.pipeline[4].control_volume.flow_mass[t0, x].fix()
+                m.fs.pipeline[5].control_volume.flow_mass[t0, x].fix()
 
         # Make sure we have zero degrees of freedom and a perfect matching
         # between constraints and variables.
@@ -260,6 +270,7 @@ class TestConstructFlowsheets(unittest.TestCase):
         N, M = len(igraph.constraints), len(igraph.variables)
         matching = igraph.maximum_matching()
         self.assertEqual(len(matching), N)
+       
 
 
 if __name__ == "__main__":

@@ -374,8 +374,10 @@ argument).""",
                 )
             else:
                 accum_expr = 0.0
+            
             flux_expr = pyunits.convert(cv.pressure_dx[t, x] / cv.length, kgm2hr2)
             friction_expr = pyunits.convert(self.get_friction_term(t, x), kgm2hr2)
+            
             return accum_expr + flux_expr + friction_expr == 0
 
         cv.momentum_balance = Constraint(

@@ -112,6 +112,11 @@ class IsothermalCompressorData(UnitModelBlockData):
                                 mutable = True, 
                                 units = pyunits.dimensionless, 
                                 doc = "Compressor Efficiency")
+        
+        self.scenario_multiplication_parameter = Param(initialize = 1, 
+                                mutable = True, 
+                                units = pyunits.dimensionless, 
+                                doc = "A parameter for easily computing the average power")
                                 
                               
         # Add compression coefficient
@@ -179,6 +184,7 @@ class IsothermalCompressorData(UnitModelBlockData):
             cp_mass = inlet_state[t].cp_mol / inlet_state[t].mw
             power_expr = (
                 inlet_state[t].temperature
+                *self.scenario_multiplication_parameter
                 *1/self.efficiency
                 * cp_mass
                 * inlet_state[t].flow_mass
