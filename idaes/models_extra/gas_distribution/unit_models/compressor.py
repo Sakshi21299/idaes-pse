@@ -113,7 +113,7 @@ class IsothermalCompressorData(UnitModelBlockData):
                                 units = pyunits.dimensionless, 
                                 doc = "Compressor Efficiency")
         
-        self.scenario_multiplication_parameter = Param(initialize = 1, 
+        self.scenario_multiplication_parameter = Param(time, initialize = 1, 
                                 mutable = True, 
                                 units = pyunits.dimensionless, 
                                 doc = "A parameter for easily computing the average power")
@@ -181,10 +181,11 @@ class IsothermalCompressorData(UnitModelBlockData):
         time = self.flowsheet().time
 
         def power_rule(b, t):
+           
             cp_mass = inlet_state[t].cp_mol / inlet_state[t].mw
             power_expr = (
                 inlet_state[t].temperature
-                *self.scenario_multiplication_parameter
+                *self.scenario_multiplication_parameter[t]
                 *1/self.efficiency
                 * cp_mass
                 * inlet_state[t].flow_mass
