@@ -32,12 +32,11 @@ from idaes.models_extra.gas_distribution.unit_models.compressor import (
     IsothermalCompressor as Compressor,
 )
 from idaes.models_extra.gas_distribution.unit_models.node import PipelineNode
-from idaes.models_extra.gas_distribution.unit_models.compressor import (
-    IsothermalCompressor,
-)
+
 from idaes.core.util.model_statistics import degrees_of_freedom
 
-def make_model(dynamic=True,
+def make_model(
+    dynamic=True,
     scenario = 1,
     nxfe=2,
     space_method="dae.finite_difference",
@@ -58,15 +57,7 @@ def make_model(dynamic=True,
     m.fs.properties = NaturalGasParameterBlock()
 
 
-    pipeline_config = {
-        "property_package": m.fs.properties,
-        "finite_elements": nxfe,
-        "transformation_method": space_method,
-        "transformation_scheme": space_scheme,
-        "has_holdup": True,
-    }
-    m.fs.pipeline_set = pyo.Set(initialize=range(6))
-    m.fs.pipeline = GasPipeline(m.fs.pipeline_set, default=pipeline_config)
+    
 
     node_configs = [
         {
@@ -125,31 +116,40 @@ def make_model(dynamic=True,
     m.fs.node_set = pyo.Set(initialize=list(range(len(node_configs))))
     node_configs = {i: config for i, config in enumerate(node_configs)}
     m.fs.nodes = PipelineNode(m.fs.node_set, initialize=node_configs)
-
+   
+    pipeline_config = {
+        "property_package": m.fs.properties,
+        "finite_elements": nxfe,
+        "transformation_method": space_method,
+        "transformation_scheme": space_scheme,
+        "has_holdup": True,
+    }
+    m.fs.pipeline_set = pyo.Set(initialize=range(6))
+    m.fs.pipeline = GasPipeline(m.fs.pipeline_set, default=pipeline_config)
+    
     compressor_config = {"property_package": m.fs.properties}
     m.fs.compressor_set = pyo.Set(initialize=range(3))
     m.fs.compressor = Compressor(
         m.fs.compressor_set, default=compressor_config
     )
-    m.fs.compressor[:].scenario_multiplication_parameter = scenario
+    m.fs.compressor[:].scenario_multiplication_parameter[:] = scenario
     
 
     # Connect compressors to pipelines
-    # Should/could I make this easier?
-    
-    
-    #What does this map map to? are 0,1,2 compressor numbers and 0,1,4 
-    #pipeline numbers that are connected to the compressor outlets? 
-    pipeline_idx_map = {0: 0, 1: 1, 2:4}
 
-    def compressor_to_pipeline_rule(fs, i):
-        return (
-            m.fs.compressor[i].outlet_port,
-            m.fs.pipeline[pipeline_idx_map[i]].inlet_port,
-        )
-
-    m.fs.compressor_to_pipeline = network.Arc(
-        m.fs.compressor_set, rule=compressor_to_pipeline_rule
+    m._compressor_to_pipeline_1 = network.Arc(
+        ports=(m.fs.compressor[0].outlet_port,
+        m.fs.pipeline[0].inlet_port)
+    )
+    
+    m._compressor_to_pipeline_2 = network.Arc(
+        ports=(m.fs.compressor[1].outlet_port,
+        m.fs.pipeline[1].inlet_port)
+    )
+    
+    m._compressor_to_pipeline_3 = network.Arc(
+        ports=(m.fs.compressor[2].outlet_port,
+        m.fs.pipeline[4].inlet_port)
     )
     
     m.fs.nodes[0].add_pipeline_to_outlet(m.fs.compressor[0])
@@ -184,7 +184,7 @@ def make_model(dynamic=True,
    
     x0 = m.fs.pipeline[0].control_volume.length_domain.first()
     xf = m.fs.pipeline[0].control_volume.length_domain.last()
-    
+    j = next(iter(m.fs.properties.component_list))
     if dynamic:
         t0 = m.fs.time.first()
         for x in m.fs.pipeline[0].control_volume.length_domain:
@@ -214,8 +214,9 @@ def make_model(dynamic=True,
     # Fix "dynamic inputs." This needs to be done after a potential
     # discretization transformation.
 
-    m.fs.nodes[0].supplies[0].state[:].mole_frac_comp[:].fix()
+    m.fs.nodes[0].state[:].mole_frac_comp[j].fix()
     m.fs.nodes[0].state[:].temperature.fix()
+  
     
     return m 
     
@@ -241,16 +242,19 @@ def make_steady_model(
         var[:].set_value(val)
     
     # Ipopt bound multipliers (obtained from solution)
-    m.ipopt_zL_out = pyo.Suffix(direction=pyo.Suffix.IMPORT)
-    m.ipopt_zU_out = pyo.Suffix(direction=pyo.Suffix.IMPORT)
-    # Ipopt bound multipliers (sent to solver)
-    m.ipopt_zL_in = pyo.Suffix(direction=pyo.Suffix.EXPORT)
-    m.ipopt_zU_in = pyo.Suffix(direction=pyo.Suffix.EXPORT)
-    m.dual = pyo.Suffix(direction=pyo.Suffix.IMPORT_EXPORT)
+    # m.ipopt_zL_out = pyo.Suffix(direction=pyo.Suffix.IMPORT)
+    # m.ipopt_zU_out = pyo.Suffix(direction=pyo.Suffix.IMPORT)
+    # # Ipopt bound multipliers (sent to solver)
+    # m.ipopt_zL_in = pyo.Suffix(direction=pyo.Suffix.EXPORT)
+    # m.ipopt_zU_in = pyo.Suffix(direction=pyo.Suffix.EXPORT)
+    # m.dual = pyo.Suffix(direction=pyo.Suffix.IMPORT_EXPORT)
+    
+    
+    
     ipopt = pyo.SolverFactory("ipopt")
     res = ipopt.solve(m, tee=tee)
     pyo.assert_optimal_termination(res)
-    
+
     return m
 
     
